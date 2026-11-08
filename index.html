@@ -696,7 +696,14 @@ const PATTERNS={
   folk:{name:'D D U U D U',slots:'D.DU.UDU',desc:'The most common pop/Bollywood pattern. The gap on beat 3 is a ghost strum.'},
   ballad:{name:'Slow ballad',slots:'D...D.DU',desc:'Lots of space, good for soft Arijit-style verses.'},
   reggae:{name:'Reggae off-beat',slots:'.U.U.U.U',desc:'Short chops on the "and"s. Three Little Birds style.'},
-  six:{name:'6/8 ballad',slots:'D.UD.U',desc:'For songs counted 1-2-3-4-5-6 (Perfect, Hallelujah).',beats:6}
+  six:{name:'6/8 ballad',slots:'D.UD.U',desc:'For songs counted 1-2-3-4-5-6 (Perfect, Hallelujah).',beats:6},
+  campfire:{name:'Campfire (D D DU DU)',slots:'D.D.DUDU',desc:'Simple and singable: two downs, then two down-ups. Great for sing-alongs with friends.'},
+  kaherwa:{name:'Kaherwa feel',slots:'D.DUDUD.',desc:'A bouncy 8-beat feel borrowed from the tabla rhythm used in countless Hindi film songs.'},
+  chuck:{name:'Chuck strum (D ✕ DU ✕ U)',slots:'D.XU.UXU',desc:'✕ = "chuck": slap the strings with your palm as you strum down, for a snare-drum sound. The signature acoustic-cover groove.'},
+  rock:{name:'Rock eighths',slots:'DDDDDDDD',desc:'All downstrokes, eight per bar, driving and even. Rest the palm lightly near the bridge for a chunky sound.'},
+  popballad:{name:'Pop ballad (D DU UD)',slots:'D.DU.UD.',desc:'Leaves space at the end of the bar so the next chord breathes. Nice for slower romantic songs.'},
+  waltz:{name:'Waltz 3/4 (D DU DU)',slots:'D.DUDU',desc:'Counted 1-2-3. Strong first beat, lighter after. Used in old classics and lullabies.',beats:3},
+  six2:{name:'6/8 driving (D D U D D U)',slots:'DDUDDU',desc:'A fuller 6/8 groove for when the song picks up. Strong on beats 1 and 4.',beats:6}
 };
 // chart text: [Section] headers, one line of chords per sung line (no lyrics).
 // lineMode (default): each line lasts 2 bars, shared between its chords. perChord:true → every chord = 1 bar.
@@ -1129,6 +1136,7 @@ function strum(name,t,dir='D',g=0.32){
   idx.forEach((i,k)=>playMidi(v[i],t+k*0.013,g));
 }
 function arpeggio(name){const v=voicing(name);if(!v)return;const c=ac();let t=c.currentTime+0.05;v.forEach(m=>{if(m!=null){playMidi(m,t,0.5);t+=0.3}});strum(name,t+0.25)}
+function chuck(t,g=0.5){const c=ac();t=t||c.currentTime;const len=Math.floor(c.sampleRate*0.06),b=c.createBuffer(1,len,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);const s=c.createBufferSource();s.buffer=b;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=1800;f.Q.value=0.8;const gn=c.createGain();gn.gain.value=g;s.connect(f);f.connect(gn);gn.connect(master);s.start(t)}
 function clickAt(t,accent){const c=ac();const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=accent?2700:2000;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(accent?0.55:0.32,t+0.002);g.gain.exponentialRampToValueAtTime(0.0001,t+0.05);o.connect(g);g.connect(master);o.start(t);o.stop(t+0.07)}
 function atTime(t,fn){const d=Math.max(0,(t-actx.currentTime)*1000);setTimeout(fn,d)}
 class Seq{
@@ -1539,7 +1547,7 @@ $('#mTap').onclick=()=>{const n=performance.now();taps=taps.filter(t=>n-t<3000);
 let sPat='folk';const patSeq=new Seq();
 function renderSlots(pat,on=-1){
   const p=PATTERNS[pat],per=p.slots.length/(p.beats||4);
-  $('#sSlots').innerHTML=[...p.slots].map((ch,i)=>`<div><span class="${i===on?'on':''} ${ch==='.'?'rest':''}">${ch==='.'?'·':ch==='D'?'↓':'↑'}</span><small>${i%per===0?(i/per+1):'&'}</small></div>`).join('');
+  $('#sSlots').innerHTML=[...p.slots].map((ch,i)=>`<div><span class="${i===on?'on':''} ${ch==='.'?'rest':''}">${ch==='.'?'·':ch==='D'?'↓':ch==='X'?'✕':'↑'}</span><small>${i%per===0?(i/per+1):'&'}</small></div>`).join('');
 }
 function renderPatterns(){
   $('#sPats').innerHTML=Object.entries(PATTERNS).map(([k,p])=>`<button class="chip ${k===sPat?'on':''}" data-p="${k}">${esc(p.name)}</button>`).join('');
@@ -1552,7 +1560,7 @@ $('#sPlay').onclick=()=>{
   if(patSeq.running){patSeq.stop();$('#sPlay').textContent='▶ Play pattern';$('#sPlay').classList.remove('stop');renderSlots(sPat);return}
   ac();const p=PATTERNS[sPat],beats=p.beats||4,per=p.slots.length/beats,chords=$('#sChord').value.split('→').map(s=>s.trim());
   patSeq.start(+$('#sBpm').value,per,(s,t)=>{const i=s%p.slots.length,bar=Math.floor(s/p.slots.length),ch=chords[bar%chords.length],x=p.slots[i];
-    if(i%per===0)clickAt(t,i===0);if(x!=='.')strum(ch,t,x,x==='D'&&i===0?0.36:0.28);atTime(t,()=>renderSlots(sPat,i))});
+    if(i%per===0)clickAt(t,i===0);if(x==='X')chuck(t);else if(x!=='.')strum(ch,t,x,x==='D'&&i===0?0.36:0.28);atTime(t,()=>renderSlots(sPat,i))});
   $('#sPlay').textContent='■ Stop';$('#sPlay').classList.add('stop');quest('strum');
 };
 
@@ -1664,7 +1672,7 @@ async function startPlayAlong(){
     if(beat<0){if(step%per===0){const n=s.beats-Math.round(step/per);atTime(t,()=>{$('#paNow').textContent=n;$('#paNext').textContent='Count-in…'})}return}
     const gi=segs.findIndex(g=>bpos>=g.start-1e-9&&bpos<g.start+g.beats-1e-9);if(gi<0)return;const g=segs[gi];
     if(Math.abs(bpos-g.start)<1e-9){g.t0=t;g.t1=t+g.beats*60/bpm;atTime(t,()=>paShow(gi))}
-    if($('#paBack').checked){const x=pat.slots[slot];if(x!=='.')strum(g.c,t,x,0.26)}
+    if($('#paBack').checked){const x=pat.slots[slot];if(x==='X')chuck(t,0.4);else if(x!=='.')strum(g.c,t,x,0.26)}
   });
 }
 function paShow(gi){
@@ -1825,7 +1833,7 @@ function todaysPlan(){
    {k:'omc',i:'⏱️',t:`1-minute changes: ${cA} ↔ ${cB}`,d:'Finish one 60-second round',go:()=>{location.hash='#practice';setTimeout(()=>{$('#pA').value=cA;$('#pB').value=cB;renderPairUI()},50)}},
    {k:'ear',i:'🎧',t:'Ear game: 5 right answers',d:'Guess the chord by sound (below)',go:()=>{const e=$('#earCard');e&&e.scrollIntoView({behavior:'smooth',block:'center'})}},
    {k:'song',i:'🎬',t:`Play along: ${song.t}`,d:'Finish one play-along at any tempo',go:()=>{location.hash='#songs';setTimeout(()=>openSong(song.id),50)}},
-   {k:'strum',i:'🥁',t:'Strum pattern of the day',d:`Play the "${Object.values(PATTERNS)[d%5].name}" pattern`,go:()=>{location.hash='#practice';setTimeout(()=>{sPat=Object.keys(PATTERNS)[d%5];renderPatterns();$('#sPats').scrollIntoView({block:'center'})},50)}},
+   {k:'strum',i:'🥁',t:'Strum pattern of the day',d:`Play the "${Object.values(PATTERNS)[d%Object.keys(PATTERNS).length].name}" pattern`,go:()=>{location.hash='#practice';setTimeout(()=>{sPat=Object.keys(PATTERNS)[d%Object.keys(PATTERNS).length];renderPatterns();$('#sPats').scrollIntoView({block:'center'})},50)}},
    {k:'tune',i:'🎚️',t:'Tune up first',d:'Use the tuner (live or a recording)',go:()=>{location.hash='#tune'}}
   ];
   const order=[0,1,2,3,4,5].sort((a,b)=>seeded(d*13+a)-seeded(d*13+b));
