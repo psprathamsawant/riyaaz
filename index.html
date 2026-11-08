@@ -246,6 +246,24 @@ pre.tab{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-si
 .clip audio{width:100%;margin-top:6px;height:36px}
 #rgPad.hit{background:var(--acc);color:#1b130b}
 #rgPad.beat{border-color:var(--acc)}
+.fb-wrap{overflow-x:auto;margin-top:10px;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.fb{display:grid;grid-template-columns:34px repeat(13,48px);min-width:max-content;position:relative}
+.fb .cell{height:34px;display:grid;place-items:center;position:relative;cursor:pointer;border-right:2px solid #6b5d52}
+.fb .cell::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:var(--sw,1.5px) solid #bdb0a3;z-index:0}
+.fb .cell.f0{border-right:5px solid #f4ede5;background:#1a1512}
+.fb .cell b{position:relative;z-index:1;font-size:11.5px;min-width:26px;height:24px;border-radius:12px;display:grid;place-items:center;background:transparent;color:transparent;font-weight:700}
+.fb .cell.show b{background:#3a3029;color:var(--text)}
+.fb .cell.hi b{background:var(--acc);color:#1b130b}
+.fb .cell.root b{background:#fff;color:#1b130b}
+.fb .cell.ok b{background:var(--ok);color:#06200f}
+.fb .cell.bad b{background:var(--bad);color:#200}
+.fb .cell.q b{background:#fff;color:#1b130b;box-shadow:0 0 0 4px rgba(242,165,65,.5)}
+.fb .lab{height:34px;display:grid;place-items:center;font-weight:700;color:var(--muted);font-size:13px}
+.fb .num{height:20px;display:grid;place-items:center;font-size:11px;color:var(--muted)}
+.fb .num.dot{color:var(--acc);font-weight:800}
+.mp{border-top:1px dashed var(--line);padding:12px 0}
+.mp:first-child{border-top:0}
+.mp .roman{font-size:12px;color:var(--acc);font-weight:700;letter-spacing:.05em}
 </style>
 </head>
 <body>
@@ -393,6 +411,22 @@ pre.tab{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-si
   <p class="sub">Tap any chord to see the fingering, hear how it should sound, and send it to the checker. "Every key" has major, minor, 7th, sus and more for all 12 notes.</p>
   <div class="chips" id="chFilter" style="margin-bottom:12px"></div><div id="chKeys"></div>
   <div class="grid" id="chGrid"></div>
+  <div class="card" id="fbCard" style="margin-top:16px">
+    <h2>🎼 Fretboard explorer</h2>
+    <p class="small muted">Tap any spot to hear the note. Pick a chord or note to light it up across the neck. Scroll sideways for higher frets.</p>
+    <div class="chips" id="fbModes" style="margin-top:10px">
+      <button class="chip on" data-m="explore">Explore</button><button class="chip" data-m="find">🎮 Find the note</button><button class="chip" data-m="name">🎮 Name the note</button>
+    </div>
+    <div class="two" id="fbOpts" style="margin-top:10px">
+      <div><label class="f">Show</label><select id="fbShow"><option value="none">Nothing</option><option value="all">All note names</option><option value="nat">Natural notes (no #)</option></select></div>
+      <div><label class="f">Light up</label><select id="fbHi"></select></div>
+    </div>
+    <div class="tstate" id="fbQ" style="margin-top:10px"></div>
+    <div class="fb-wrap"><div class="fb" id="fb"></div></div>
+    <div class="ear-opts" id="fbAns"></div>
+    <div class="small muted" id="fbScore" style="text-align:center;margin-top:8px"></div>
+  </div>
+
 </section>
 
 <!-- ================= CHECK ================= -->
@@ -497,6 +531,16 @@ pre.tab{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-si
     <p class="small muted" style="margin-top:10px"><b>P</b> = thumb (bass strings 6–4), <b>I</b> = index (string 3), <b>M</b> = middle (string 2), <b>A</b> = ring (string 1). Plant your little finger lightly on the guitar body for stability.</p>
   </div>
 
+  <div class="card" id="e2Card">
+    <h2>🎧 Ear training · level 2</h2>
+    <div class="chips" id="e2Modes"><button class="chip on" data-m="mm">Major or minor?</button><button class="chip" data-m="prog">Which progression?</button></div>
+    <p class="small muted" id="e2Desc" style="margin-top:8px"></p>
+    <button class="btn pri block" id="e2Play" style="margin-top:10px">▶ Play</button>
+    <div class="ear-opts" id="e2Opts"></div>
+    <div class="small" id="e2Msg" style="text-align:center;margin-top:10px"></div>
+    <div class="small muted" id="e2Score" style="text-align:center;margin-top:4px"></div>
+  </div>
+
   <div class="card" id="rgCard">
     <h2>🎯 Rhythm game</h2>
     <p class="small muted">Tap the pad exactly on each click. After a 4-click count-in, it scores how close you land to the beat.</p>
@@ -536,6 +580,11 @@ pre.tab{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-si
     </div>
     <input type="text" id="sgSearch" placeholder="🔎 Search songs, artists, films…" style="margin-bottom:6px">
     <div class="small muted" id="sgCount" style="margin-bottom:10px"></div>
+    <div class="card glow" id="mpCard">
+      <h2>✨ Magic progressions</h2>
+      <p class="small muted">A handful of chord loops power hundreds of songs. Learn the loop once and you can play every song that uses it.</p>
+      <div id="mpList"></div>
+    </div>
     <div id="sgItems"></div>
     <p class="small muted" style="margin-top:12px">Built-in charts are simplified beginner arrangements compiled from community chord sheets. Each song links to full sheets and lessons for checking.</p>
   </div>
@@ -568,7 +617,7 @@ function applyMobile(){
 }
 applyMobile();addEventListener('resize',applyMobile);addEventListener('orientationchange',()=>setTimeout(applyMobile,250));
 /* =================== helpers =================== */
-const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const $=s=>document.querySelector(s), $$=(s,r)=>r?[...r.querySelectorAll(s)]:[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store={get(k,d){try{const v=localStorage.getItem('riyaaz:'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('riyaaz:'+k,JSON.stringify(v))}catch(e){}}};
 const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -1322,7 +1371,7 @@ function route(){
   const h=(location.hash||'#learn').slice(1),v=VIEWS.includes(h)?h:'learn';
   $$('.view').forEach(el=>el.classList.toggle('active',el.id==='v-'+v));
   $$('nav.bottom a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
-  stopLiveTools();if(v!=='songs')stopPlayAlong();if(v==='learn'&&typeof renderToday==='function')renderToday();
+  stopLiveTools();if(v!=='songs'){stopPlayAlong();if(typeof mpSeq!=='undefined'&&mpSeq.running){mpSeq.stop();mpOn=-1}}if(v==='learn'&&typeof renderToday==='function')renderToday();
   window.scrollTo(0,0);
 }
 function stopLiveTools(){Live.end();tunerOn=false;checkOn=false;$('#tStart').textContent='🎤 Start listening';$('#tStart').classList.remove('stop');$('#kStart').textContent='🎤 Start listening';$('#kStart').classList.remove('stop')}
@@ -1629,6 +1678,7 @@ function renderSongList(){
   $$('#sgFilter .chip').forEach(b=>b.onclick=()=>{sgFilter=b.dataset.f;renderSongList()});
   const q=sgQuery.trim().toLowerCase();
   const list=allSongs().filter(s=>(sgFilter==='all'||(sgFilter==='mine'?s.custom:s.lang===sgFilter))&&(!q||(s.t+' '+(s.a||'')).toLowerCase().includes(q)));
+  if(typeof renderMagic==='function'&&!q&&sgFilter==='all')renderMagic();$('#mpCard').style.display=(!q&&sgFilter==='all')?'':'none';
   $('#sgCount').textContent=`${list.length} song${list.length===1?'':'s'}`;
   $('#sgItems').innerHTML=list.length?list.map(s=>{const v=s.v[0];return`<div class="card song" data-id="${esc(s.id)}"><div class="art ${s.lang==='en'?'en':''}">${s.ai?'✨':s.custom?'⭐':s.lang==='en'?'🎤':'🎬'}</div><div class="meta"><div class="ti">${esc(s.t)}</div><div class="ar">${esc(s.a||'')}</div><div>${verChords(v).slice(0,6).map(c=>`<span class="tag acc">${esc(c)}</span>`).join('')}${v.capo?`<span class="tag">Capo ${v.capo}</span>`:''}${s.v.length>1?`<span class="tag">${s.v.length} versions</span>`:''}<span class="tag">${esc(s.lvl||'')}</span></div></div></div>`}).join('')
     :`<div class="card muted">No songs match${q?` "${esc(sgQuery)}"`:''}. Tap <b>＋ Add song</b> to paste a chord sheet or ask Claude for it.</div>`;
@@ -1917,6 +1967,102 @@ $('#prRec').onclick=async()=>{
   prRecorder._iv=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('#prRec').textContent=`■ Stop (${s}s)`;if(s>=90&&prRecorder)prRecorder.stop()},250);
 };
 
+
+/* =================== FRETBOARD =================== */
+let fbMode='explore',fbG=null;
+const FB_STR=[5,4,3,2,1,0];// display high e at top
+function fbPc(s,f){return (OPEN[s]+f)%12}
+function renderFb(){
+  const show=$('#fbShow').value,hi=$('#fbHi').value;let hiSet=null,root=null;
+  if(hi&&hi!=='none'){if(hi.startsWith('n:')){hiSet=[NOTES.indexOf(hi.slice(2))];root=hiSet[0]}else{hiSet=pcs(hi);const sp=splitChord(hi);root=sp?sp.pc:null}}
+  let html='<div class="num"></div>'+Array.from({length:13},(_,f)=>`<div class="num ${[3,5,7,9,12].includes(f)?'dot':''}">${f||'open'}</div>`).join('');
+  FB_STR.forEach(s=>{html+=`<div class="lab">${SLET[s]}</div>`;for(let f=0;f<=12;f++){const pc=fbPc(s,f),nm=NOTES[pc];
+    let cls='cell'+(f===0?' f0':'');
+    if(fbMode==='explore'){if(hiSet&&hiSet.includes(pc))cls+=pc===root&&hiSet.length>1?' root':' hi';else if(show==='all'||(show==='nat'&&!nm.includes('#')))cls+=' show'}
+    if(fbG&&fbG.mark&&fbG.mark[s+'-'+f])cls+=' '+fbG.mark[s+'-'+f];
+    if(fbMode==='name'&&fbG&&fbG.s===s&&fbG.f===f)cls+=' q';
+    html+=`<div class="${cls}" data-s="${s}" data-f="${f}" style="--sw:${(2.6-s*0.3).toFixed(1)}px"><b>${(cls.includes('show')||cls.includes('hi')||cls.includes('root')||cls.includes(' ok')||cls.includes('bad'))?nm:(cls.includes(' q')?'?':'')}</b></div>`}});
+  $('#fb').innerHTML=html;
+  $$('#fb .cell').forEach(c=>c.onclick=()=>fbTap(+c.dataset.s,+c.dataset.f));
+}
+function fbTap(s,f){
+  playMidi(OPEN[s]+f,0,0.6);
+  if(fbMode==='find'&&fbG&&!fbG.done){const ok=fbPc(s,f)===fbG.pc&&(fbG.s<0||s===fbG.s);fbG.mark={[s+'-'+f]:ok?'ok':'bad'};
+    if(ok){fbG.score++;fbG.streak++;fbG.done=true;$('#fbQ').innerHTML=`<span style="color:var(--ok)">✓ ${NOTES[fbG.pc]}!</span> Next one…`;setTimeout(fbNext,900)}else{fbG.streak=0;$('#fbQ').innerHTML=`<span style="color:var(--bad)">That's ${NOTES[fbPc(s,f)]}.</span> Find <b>${NOTES[fbG.pc]}</b>${fbG.s>=0?` on the ${SLET[fbG.s]} string`:''}`}
+    fbScore();renderFb();return}
+  if(fbMode==='explore')$('#fbQ').innerHTML=`<b style="font-size:22px">${NOTES[fbPc(s,f)]}</b> <span class="small muted">· ${SLET[s]} string, ${f?'fret '+f:'open'} · ${midiName(OPEN[s]+f)}</span>`;
+}
+function fbScore(){const b=store.get('fbBest',0);if(fbG&&fbG.streak>b)store.set('fbBest',fbG.streak);$('#fbScore').textContent=fbG?`Score ${fbG.score} · streak ${fbG.streak} · best streak ${Math.max(b,fbG.streak)}`:''}
+function fbNext(){
+  const maxF=Math.min(12,5+Math.floor(dayNo()/3));
+  if(fbMode==='find'){const nat=[0,2,4,5,7,9,11];const pc=nat[Math.floor(Math.random()*nat.length)];const s=Math.floor(Math.random()*6);
+    fbG={...(fbG||{score:0,streak:0}),pc,s,done:false,mark:{}};$('#fbQ').innerHTML=`Find <b style="font-size:22px">${NOTES[pc]}</b> on the <b>${SLET[s]}</b> string`;$('#fbAns').innerHTML=''}
+  else{const s=Math.floor(Math.random()*6),f=Math.floor(Math.random()*(maxF+1)),pc=fbPc(s,f);
+    fbG={...(fbG||{score:0,streak:0}),s,f,pc,done:false,mark:{}};$('#fbQ').innerHTML='Which note is <b>?</b>';
+    const opts=[pc];while(opts.length<4){const o=Math.floor(Math.random()*12);if(!opts.includes(o))opts.push(o)}opts.sort(()=>Math.random()-.5);
+    $('#fbAns').innerHTML=opts.map(o=>`<button class="btn" data-p="${o}">${NOTES[o]}</button>`).join('');
+    $$('#fbAns button').forEach(b=>b.onclick=()=>{if(fbG.done)return;fbG.done=true;const ok=+b.dataset.p===fbG.pc;b.classList.add(ok?'right':'wrong');playMidi(OPEN[fbG.s]+fbG.f,0,0.6);
+      if(ok){fbG.score++;fbG.streak++}else{fbG.streak=0;$(`#fbAns button[data-p="${fbG.pc}"]`).classList.add('right')}
+      fbG.mark={[fbG.s+'-'+fbG.f]:ok?'ok':'bad'};$('#fbQ').innerHTML=ok?'<span style="color:var(--ok)">Correct!</span>':`<span style="color:var(--bad)">It was ${NOTES[fbG.pc]}</span>`;fbScore();renderFb();setTimeout(fbNext,1100)})}
+  fbScore();renderFb();
+}
+function initFb(){
+  $('#fbHi').innerHTML='<option value="none">Nothing</option>'+ESSENTIAL.map(c=>`<option>${c}</option>`).join('')+NOTES.map(n=>`<option value="n:${n}">Every ${n}</option>`).join('');
+  $('#fbShow').onchange=renderFb;$('#fbHi').onchange=renderFb;
+  $$('#fbModes .chip').forEach(b=>b.onclick=()=>{fbMode=b.dataset.m;$$('#fbModes .chip').forEach(x=>x.classList.toggle('on',x===b));$('#fbOpts').style.display=fbMode==='explore'?'':'none';
+    fbG=null;$('#fbAns').innerHTML='';$('#fbQ').innerHTML='';$('#fbScore').textContent='';if(fbMode!=='explore')fbNext();else renderFb()});
+  renderFb();
+}
+
+/* =================== EAR TRAINING LEVEL 2 =================== */
+const E2PROGS=[['Pop loop','G D Em C'],['Sad-romantic loop','Em C G D'],['50s ballad','G Em C D'],['Folk three','G C D G'],['Minor drama','Em D C D'],['Two-chord vamp','Em D Em D']];
+let e2Mode='mm',e2={score:0,streak:0,cur:null,answered:true};
+function e2Render(){$('#e2Desc').textContent=e2Mode==='mm'?'Major sounds bright and happy, minor sounds sad or serious. Random keys, so trust your ear!':'Four chords play in a row. Which famous loop is it? These loops are behind most Bollywood songs.';$('#e2Score').textContent=`Score ${e2.score} · streak ${e2.streak} · best ${store.get('e2Best',0)}`}
+function e2Play(){
+  ac();
+  if(e2.answered){e2.answered=false;
+    if(e2Mode==='mm'){const r=NOTES[Math.floor(Math.random()*12)],m=Math.random()<0.5;e2.cur={ans:m?'Minor':'Major',chords:[r+(m?'m':'')]};e2.opts=['Major','Minor']}
+    else{const k=Math.floor(Math.random()*E2PROGS.length);e2.cur={ans:E2PROGS[k][0],chords:E2PROGS[k][1].split(' ')};const o=[k];while(o.length<4){const x=Math.floor(Math.random()*E2PROGS.length);if(!o.includes(x))o.push(x)}e2.opts=o.sort(()=>Math.random()-.5).map(i=>E2PROGS[i][0])}
+    $('#e2Opts').innerHTML=e2.opts.map(o=>`<button class="btn" data-a="${esc(o)}" style="font-size:${e2Mode==='mm'?20:15}px">${esc(o)}</button>`).join('');$('#e2Msg').textContent='';
+    $$('#e2Opts button').forEach(b=>b.onclick=()=>{if(e2.answered)return;e2.answered=true;const ok=b.dataset.a===e2.cur.ans;b.classList.add(ok?'right':'wrong');
+      if(!ok)$(`#e2Opts button[data-a="${e2.cur.ans}"]`).classList.add('right');
+      if(ok){e2.score++;e2.streak++;if(e2.streak>store.get('e2Best',0))store.set('e2Best',e2.streak)}else e2.streak=0;
+      $('#e2Msg').innerHTML=ok?`<span style="color:var(--ok)">Sahi! 🎯</span>`:`<span style="color:var(--bad)">It was ${esc(e2.cur.ans)}</span>`;
+      $('#e2Msg').innerHTML+=` <span class="muted">(${e2.cur.chords.join(' → ')})</span>`;$('#e2Play').textContent='▶ Next';e2Render()})}
+  const c=actx;let t=c.currentTime+0.05;const gap=e2Mode==='mm'?0:0.9;e2.cur.chords.forEach(ch=>{strum(ch,t);t+=gap});
+  $('#e2Play').textContent='🔁 Play again';
+}
+function initE2(){$$('#e2Modes .chip').forEach(b=>b.onclick=()=>{e2Mode=b.dataset.m;$$('#e2Modes .chip').forEach(x=>x.classList.toggle('on',x===b));e2.answered=true;$('#e2Opts').innerHTML='';$('#e2Msg').textContent='';$('#e2Play').textContent='▶ Play';e2Render()});$('#e2Play').onclick=e2Play;e2Render()}
+
+/* =================== MAGIC PROGRESSIONS =================== */
+// pattern: [semitones from first chord, minor?]
+const MAGIC=[
+ {name:'Pop loop',roman:'I – V – vi – IV',ex:'G D Em C',pat:[[0,0],[7,0],[9,1],[5,0]],tip:'The most-used loop in modern pop. Bright and hopeful.'},
+ {name:'Sad-romantic loop',roman:'vi – IV – I – V',ex:'Am F C G',pat:[[0,1],[8,0],[3,0],[10,0]],tip:'Same chords as the pop loop, started on the minor. The heart of Arijit-style ballads.'},
+ {name:'50s ballad',roman:'I – vi – IV – V',ex:'G Em C D',pat:[[0,0],[9,1],[5,0],[7,0]],tip:'Classic and nostalgic. Old Hindi film songs love it.'},
+ {name:'Folk three',roman:'I – IV – V',ex:'G C D',pat:[[0,0],[5,0],[7,0]],tip:'Three chords, endless songs. The first thing every guitarist learns.'},
+ {name:'Minor drama',roman:'i – VII – VI',ex:'Em D C',pat:[[0,1],[10,0],[8,0]],tip:'Moody and cinematic. Pure Bollywood intensity.'},
+ {name:'Two-chord vamp',roman:'i – VII',ex:'Em D',pat:[[0,1],[10,0],[0,1]],tip:'Just two chords. Hypnotic, great for strumming practice.'}
+];
+function simp(c){const sp=splitChord(c);if(!sp||sp.pc<0)return null;const q=quality(sp.suf);return[sp.pc,(q==='m'||q==='m7')?1:0]}
+function songHasPat(s,pat){
+  return s.v.some(v=>{const seq=[];v.sections.forEach(x=>x.lines.forEach(l=>l.chords.forEach(c=>{const z=simp(c);if(z&&!(seq.length&&seq[seq.length-1][0]===z[0]&&seq[seq.length-1][1]===z[1]))seq.push(z)})));
+    for(let i=0;i+pat.length<=seq.length;i++){const r=seq[i][0];if(pat.every((p,k)=>(seq[i+k][0]-r+12)%12===p[0]&&seq[i+k][1]===p[1]))return true}return false})}
+let mpSeq=new Seq(),mpOn=-1;
+function renderMagic(){
+  const songs=allSongs();
+  $('#mpList').innerHTML=MAGIC.map((m,i)=>{const hits=songs.filter(s=>songHasPat(s,m.pat));
+    return`<div class="mp"><div class="row between"><div><div class="roman">${m.roman}</div><h3 style="margin:2px 0">${esc(m.name)}</h3></div><button class="btn sm ${mpOn===i?'stop':''}" data-i="${i}">${mpOn===i?'■ Stop':'▶ Loop'}</button></div>
+     <div class="small muted">${esc(m.tip)}</div><div style="margin-top:6px">${m.ex.split(' ').map(c=>`<span class="cc" data-c="${c}" style="min-width:44px;padding:6px 9px;font-size:15px">${c}</span>`).join('')}</div>
+     ${hits.length?`<div class="small muted" style="margin-top:4px">In your library (${hits.length}): ${hits.map(s=>`<a href="#songs" data-s="${esc(s.id)}">${esc(s.t)}</a>`).join(', ')}</div>`:'<div class="small muted" style="margin-top:4px">Not in your library yet. Add songs and they\'ll show up here.</div>'}</div>`}).join('');
+  $$('#mpList .cc').forEach(c=>c.onclick=()=>strum(c.dataset.c));
+  $$('#mpList a[data-s]').forEach(a=>a.onclick=e=>{e.preventDefault();openSong(a.dataset.s)});
+  $$('#mpList button[data-i]').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;mpSeq.stop();if(mpOn===i){mpOn=-1;renderMagic();return}
+    mpOn=i;ac();const ch=MAGIC[i].ex.split(' '),pat=PATTERNS.folk.slots;
+    mpSeq.start(80,2,(s,t)=>{const x=pat[s%8],c=ch[Math.floor(s/8)%ch.length];if(s%2===0)clickAt(t,s%8===0);if(x!=='.')strum(c,t,x,0.28);if(s%8===0)atTime(t,()=>{$$('#mpList .mp').forEach((el,k)=>{if(k===i)$$('.cc',el).forEach(cc=>cc.classList.toggle('now',cc.dataset.c===c&&cc===$$('.cc',el)[Math.floor(s/8)%ch.length]))})})});
+    renderMagic()});
+}
+
 /* =================== AAJ KA RIYAAZ: daily home =================== */
 const LEVELS=[[0,'Shuruaat 🌱'],[100,'Strummer 🎸'],[300,'Chord Champ 🏅'],[600,'Riyaazi 🔥'],[1000,'Rockstar ⭐'],[1600,'Ustaad 👑']];
 const TIPS=[
@@ -2028,7 +2174,7 @@ function renderEarOpts(){
 }
 
 /* =================== init =================== */
-renderRoadmap();renderStreak();renderToday();renderTunerStrings();renderChordLib();renderCheckChips();setCheckTarget('C');renderPairUI();renderBeats();renderPatterns();renderPicks();rgBestText();renderClips();renderSongList();route();
+renderRoadmap();renderStreak();renderToday();renderTunerStrings();renderChordLib();renderCheckChips();setCheckTarget('C');renderPairUI();renderBeats();renderPatterns();renderPicks();rgBestText();renderClips();initFb();initE2();renderSongList();route();
 </script>
 </body>
 </html>
