@@ -1148,13 +1148,21 @@ const Mic={an:null,buf:null,mode:'idle',
       const c=ac(),src=c.createMediaStreamSource(s),an=c.createAnalyser();an.fftSize=16384;an.smoothingTimeConstant=0;src.connect(an);
       const z=c.createGain();z.gain.value=0;an.connect(z);z.connect(c.destination);
       this.an=an;this.buf=new Float32Array(an.fftSize);this.mode='live';setPill();return true;
-    }catch(e){this.mode='record';setPill();showRecordNotice();return false}
+    }catch(e){this.mode='record';this.err=(e&&e.name)||'unsupported';setPill();showRecordNotice();return false}
   },
   read(){this.an.getFloatTimeDomainData(this.buf);return this.buf}
 };
 function setPill(){const p=$('#micPill');if(Mic.mode==='live'){p.textContent='● Live mic';p.className='pill live'}else if(Mic.mode==='record'){p.textContent='🎙 Record mode';p.className='pill rec'}else{p.textContent='Mic: not started';p.className='pill'}}
 const REC_NOTICE=`<div class="notice"><b>Live listening is blocked here.</b> This viewer doesn't allow microphone access, so the portal has switched to <b>Record mode</b>: tap the 🎙 button, record a 3–6 second clip with your phone, and the app analyses it with the same engine.<br><br>For real-time listening (live tuner needle, auto-counting and play-along scoring), open this portal in a normal browser tab, for example by hosting it on GitHub Pages.</div>`;
-function showRecordNotice(){['#tRec','#kRec'].forEach(s=>{const el=$(s);if(el)el.innerHTML=REC_NOTICE});const m=$('#pAutoMsg');if(m)m.textContent='Auto-count needs live mic access. Tap the button after each change instead.'}
+function micHelp(){const e=Mic.err||'';const onClaude=!/github\.io$/i.test(location.hostname);
+  if(onClaude)return REC_NOTICE;
+  const why=e==='NotAllowedError'?'<b>Microphone permission is blocked.</b> In Chrome tap the icon left of the address bar → Permissions → Microphone → Allow, then reload. Also check phone Settings → Apps → Chrome → Permissions → Microphone.'
+   :e==='NotFoundError'?'<b>No microphone was found.</b> Check that no other app (call, recorder) is holding the mic, then reload.'
+   :e==='NotReadableError'?'<b>Another app is using the microphone.</b> Close calls or recorders and reload.'
+   :!window.isSecureContext||!navigator.mediaDevices?'<b>This browser window doesn\'t allow the mic.</b> You are probably inside another app\'s built-in browser. Tap ⋮ → Open in Chrome.'
+   :'<b>The microphone could not start ('+esc(e)+').</b> Try opening the link directly in Chrome and allow the mic.';
+  return `<div class="notice">${why}<br><br>Meanwhile you can use 🎙 Record mode below.<br><button class="btn sm" style="margin-top:8px" onclick="Mic.mode='idle';Mic.err=null;setPill();this.closest('.notice').remove()">↻ Try mic again</button></div>`}
+function showRecordNotice(){['#tRec','#kRec'].forEach(s=>{const el=$(s);if(el)el.innerHTML=micHelp()});const m=$('#pAutoMsg');if(m)m.textContent='Auto-count needs live mic access. Tap the button after each change instead.'}
 const Live={on:false,consumer:null,last:0,
   async begin(fn){const ok=await Mic.start();if(!ok)return false;this.consumer=fn;if(!this.on){this.on=true;this.loop()}return true},
   end(){this.consumer=null},
