@@ -241,6 +241,11 @@ pre.tab{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-si
 .confetti{position:fixed;top:-40px;font-size:26px;z-index:70;pointer-events:none;animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
 .pop{animation:pop .4s ease}@keyframes pop{50%{transform:scale(1.08)}}
+.slots span.pk{width:auto;min-width:34px;padding:0 4px;font-size:13px;flex-direction:column}
+.clip{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
+.clip audio{width:100%;margin-top:6px;height:36px}
+#rgPad.hit{background:var(--acc);color:#1b130b}
+#rgPad.beat{border-color:var(--acc)}
 </style>
 </head>
 <body>
@@ -477,6 +482,46 @@ pre.tab{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-si
     </div>
     <div class="row" style="justify-content:center;margin-top:12px"><button class="btn pri" id="sPlay">▶ Play pattern</button></div>
     <p class="small muted" style="margin-top:10px">Play along with it: down on the numbers, up on the "&". Keep your hand moving even on the gaps.</p>
+  </div>
+
+  <div class="card">
+    <h2>🤌 Fingerpicking</h2>
+    <div class="chips" id="fpPats"></div>
+    <div class="slots" id="fpSlots"></div>
+    <div class="small muted" style="text-align:center" id="fpDesc"></div>
+    <div class="two" style="margin-top:10px">
+      <div><label class="f">Chord(s)</label><select id="fpChord"></select></div>
+      <div><label class="f">Tempo: <span id="fpBpmL">60</span> bpm</label><input type="range" id="fpBpm" min="40" max="120" value="60"></div>
+    </div>
+    <div class="row" style="justify-content:center;margin-top:12px"><button class="btn pri" id="fpPlay">▶ Play pattern</button></div>
+    <p class="small muted" style="margin-top:10px"><b>P</b> = thumb (bass strings 6–4), <b>I</b> = index (string 3), <b>M</b> = middle (string 2), <b>A</b> = ring (string 1). Plant your little finger lightly on the guitar body for stability.</p>
+  </div>
+
+  <div class="card" id="rgCard">
+    <h2>🎯 Rhythm game</h2>
+    <p class="small muted">Tap the pad exactly on each click. After a 4-click count-in, it scores how close you land to the beat.</p>
+    <div class="two" style="margin-top:8px">
+      <div><label class="f">Tempo: <span id="rgBpmL">70</span> bpm</label><input type="range" id="rgBpm" min="50" max="140" value="70"></div>
+      <div><label class="f">Tap on</label><select id="rgMode"><option value="1">Every beat (1 2 3 4)</option><option value="2">Down-ups (1 & 2 &)</option></select></div>
+    </div>
+    <button class="btn tapbtn block" id="rgPad" style="margin-top:12px">Tap here</button>
+    <div class="tstate" id="rgFb" style="margin-top:8px"></div>
+    <div id="rgRes"></div>
+    <div class="row" style="justify-content:center;margin-top:10px"><button class="btn pri" id="rgStart">▶ Start (16 beats)</button></div>
+    <div class="small muted" style="text-align:center;margin-top:8px" id="rgBest"></div>
+  </div>
+
+  <div class="card" id="prCard">
+    <h2>📼 My progress clips</h2>
+    <p class="small muted">Once a week, record 30–60 seconds of the same thing (a song or a chord change). In a month, play week 1 next to today and hear how far you've come.</p>
+    <label class="f">Label</label><input type="text" id="prLabel">
+    <div class="row" style="margin-top:10px">
+      <button class="btn pri" id="prRec">● Record now</button>
+      <label class="btn filebtn">🎙 Add a recording<input type="file" accept="audio/*" capture id="prFile"></label>
+    </div>
+    <div class="small" id="prMsg" style="margin-top:8px"></div>
+    <div id="prCompare"></div>
+    <div id="prList" style="margin-top:10px"></div>
   </div>
 </section>
 
@@ -1155,7 +1200,7 @@ const Mic={an:null,buf:null,mode:'idle',
       const s=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
       const c=ac(),src=c.createMediaStreamSource(s),an=c.createAnalyser();an.fftSize=16384;an.smoothingTimeConstant=0;src.connect(an);
       const z=c.createGain();z.gain.value=0;an.connect(z);z.connect(c.destination);
-      this.an=an;this.buf=new Float32Array(an.fftSize);this.mode='live';setPill();return true;
+      this.stream=s;this.an=an;this.buf=new Float32Array(an.fftSize);this.mode='live';setPill();return true;
     }catch(e){this.mode='record';this.err=(e&&e.name)||'unsupported';setPill();showRecordNotice();return false}
   },
   read(){this.an.getFloatTimeDomainData(this.buf);return this.buf}
@@ -1784,6 +1829,94 @@ Reply with JSON only, exactly this shape:
 }
 
 
+
+/* =================== FINGERPICKING =================== */
+const PICKS={
+ pima:{name:'P-I-M-A basic',slots:['B','3','2','1','B','3','2','1'],desc:'Thumb on the bass, then index, middle and ring up the strings. The first pattern to learn.'},
+ updown:{name:'Arpeggio up & down',slots:['B','3','2','1','2','3','A','3'],desc:'Up the strings and back down. The flowing sound of romantic Bollywood intros.'},
+ travis:{name:'Travis (alternating bass)',slots:['B','2','A','1','B','2','A','3'],desc:'The thumb alternates between two bass strings on every beat while the fingers fill the gaps. Take it slow.'},
+ pinch:{name:'Pinch',slots:['B+1','3','2','3','A+1','3','2','3'],desc:'Thumb and ring finger pluck together on beats 1 and 3, for a fuller sound.'},
+ block:{name:'Block pluck',slots:['B','3+2+1','A','3+2+1','B','3+2+1','A','3+2+1'],desc:'Thumb plays the bass, then three fingers pluck strings 3-2-1 together. Simple and piano-like.'},
+ six:{name:'6/8 ballad picking',slots:['B','3','2','1','2','3'],beats:6,desc:'Counted 1-2-3-4-5-6. Lovely for Perfect and slow Sufi-style songs.'}
+};
+const FINGER={B:'P',A:'P','3':'I','2':'M','1':'A'};
+function pickNotes(chord,tok){const v=voicing(chord);if(!v)return[];const played=[0,1,2,3,4,5].filter(i=>v[i]!=null);const bass=played[0];const alt=played.find(i=>i>bass&&i<=3)??played[1];
+  return tok.split('+').map(t=>{const i=t==='B'?bass:t==='A'?alt:6-(+t);return v[i]}).filter(m=>m!=null)}
+let fpPat='pima';const fpSeq=new Seq();
+function renderFpSlots(on=-1){const p=PICKS[fpPat],per=p.slots.length/(p.beats||4);
+  $('#fpSlots').innerHTML=p.slots.map((t,i)=>`<div><span class="pk ${i===on?'on':''}"><b>${t.split('+').map(x=>FINGER[x]).join('+')}</b><small style="font-size:9.5px;color:inherit;opacity:.8">${t.split('+').map(x=>x==='B'?'bass':x==='A'?'alt':'s'+x).join('+')}</small></span><small>${i%per===0?(i/per+1):'&'}</small></div>`).join('')}
+function renderPicks(){
+  $('#fpPats').innerHTML=Object.entries(PICKS).map(([k,p])=>`<button class="chip ${k===fpPat?'on':''}" data-p="${k}">${esc(p.name)}</button>`).join('');
+  $$('#fpPats .chip').forEach(b=>b.onclick=()=>{fpPat=b.dataset.p;renderPicks();if(fpSeq.running){fpSeq.stop();$('#fpPlay').click()}});
+  renderFpSlots();$('#fpDesc').textContent=PICKS[fpPat].desc;
+  if(!$('#fpChord').options.length)$('#fpChord').innerHTML=['Am','C','G','Em','D','Am → F → C → G','G → Em → C → D','Am → Fmaj7 → Dm → C'].map(o=>`<option>${o}</option>`).join('');
+}
+$('#fpBpm').oninput=e=>{$('#fpBpmL').textContent=e.target.value;if(fpSeq.running)fpSeq.bpm=+e.target.value};
+$('#fpPlay').onclick=()=>{
+  if(fpSeq.running){fpSeq.stop();$('#fpPlay').textContent='▶ Play pattern';$('#fpPlay').classList.remove('stop');renderFpSlots();return}
+  ac();const p=PICKS[fpPat],beats=p.beats||4,per=p.slots.length/beats,chords=$('#fpChord').value.split('→').map(s=>s.trim());
+  fpSeq.start(+$('#fpBpm').value,per,(s,t)=>{const i=s%p.slots.length,ch=chords[Math.floor(s/p.slots.length)%chords.length];
+    pickNotes(ch,p.slots[i]).forEach(m=>playMidi(m,t,0.5));atTime(t,()=>renderFpSlots(i))});
+  $('#fpPlay').textContent='■ Stop';$('#fpPlay').classList.add('stop');quest('pick');
+};
+
+/* =================== RHYTHM GAME =================== */
+let rg=null;
+function rgBestText(){const b=store.get('rgBest',{});$('#rgBest').textContent=`Best: every beat ${b['1']!=null?b['1']+'%':'–'} · down-ups ${b['2']!=null?b['2']+'%':'–'}`}
+$('#rgBpm').oninput=e=>$('#rgBpmL').textContent=e.target.value;
+$('#rgStart').onclick=()=>{
+  if(rg){rgFinish(true);return}
+  const c=ac(),bpm=+$('#rgBpm').value,per=+$('#rgMode').value,beat=60/bpm,t0=c.currentTime+0.3,start=t0+4*beat,N=16*per;
+  const targets=[];for(let k=0;k<N;k++)targets.push({t:start+k*beat/per,hit:null});
+  for(let k=0;k<4;k++){const t=t0+k*beat;clickAt(t,true);atTime(t,()=>{$('#rgFb').textContent='Count-in '+(4-k);$('#rgFb').style.color='var(--muted)'})}
+  for(let k=0;k<16;k++){const t=start+k*beat;clickAt(t,k%4===0);atTime(t,()=>{const p=$('#rgPad');p.classList.add('beat');setTimeout(()=>p.classList.remove('beat'),90)})}
+  rg={targets,lat:(c.outputLatency||0)+(c.baseLatency||0),per,end:start+16*beat};
+  rg.timer=setTimeout(()=>rgFinish(false),(rg.end-c.currentTime+0.4)*1000);
+  $('#rgRes').innerHTML='';$('#rgStart').textContent='■ Stop';$('#rgStart').classList.add('stop');
+};
+$('#rgPad').addEventListener('pointerdown',e=>{e.preventDefault();const p=$('#rgPad');p.classList.add('hit');setTimeout(()=>p.classList.remove('hit'),80);
+  if(!rg)return;const t=actx.currentTime-rg.lat;let best=null;rg.targets.forEach(g=>{if(g.hit!=null)return;const d=t-g.t;if(Math.abs(d)<0.25&&(!best||Math.abs(d)<Math.abs(best.d)))best={g,d}});
+  const fb=$('#rgFb');if(!best){fb.textContent='Off the beat';fb.style.color='var(--bad)';return}
+  best.g.hit=best.d*1000;const a=Math.abs(best.g.hit);
+  fb.textContent=a<=40?'Perfect!':a<=90?(best.d<0?'Good (a bit early)':'Good (a bit late)'):(best.d<0?'Early':'Late');fb.style.color=a<=40?'var(--ok)':a<=90?'var(--warn)':'var(--bad)'});
+function rgFinish(stopped){
+  if(!rg)return;clearTimeout(rg.timer);const T=rg.targets,hits=T.filter(g=>g.hit!=null),perf=hits.filter(g=>Math.abs(g.hit)<=40).length,good=hits.filter(g=>Math.abs(g.hit)>40&&Math.abs(g.hit)<=90).length;
+  const score=Math.round((perf+0.6*good)/T.length*100),avg=hits.length?hits.reduce((a,g)=>a+g.hit,0)/hits.length:0;
+  const tend=!hits.length?'':Math.abs(avg)<15?'Your timing is centred on the beat. 👌':avg<0?`You tend to <b>rush</b> by about ${Math.round(-avg)} ms. Relax and let the click come to you.`:`You tend to <b>drag</b> by about ${Math.round(avg)} ms. Anticipate the click slightly.`;
+  if(!stopped){const b=store.get('rgBest',{});if(b[rg.per]==null||score>b[rg.per])b[rg.per]=score;store.set('rgBest',b);if(score>=60)quest('rhythm');logPractice()}
+  $('#rgRes').innerHTML=stopped?'':`<div class="verdict ${score>=80?'ok':score>=50?'mid':'bad'}"><div class="vt">${score}% timing score</div>🎯 Perfect ${perf} · 👍 Good ${good} · ✗ Missed ${T.length-perf-good}<div style="margin-top:6px">${tend}</div></div>`;
+  $('#rgFb').textContent='';rg=null;$('#rgStart').textContent='▶ Start (16 beats)';$('#rgStart').classList.remove('stop');rgBestText();
+}
+
+/* =================== PROGRESS CLIPS (IndexedDB) =================== */
+const IDB={db:null,
+  open(){if(this.db)return Promise.resolve(this.db);return new Promise((res,rej)=>{try{const r=indexedDB.open('riyaaz',1);r.onupgradeneeded=()=>r.result.createObjectStore('clips',{keyPath:'id'});r.onsuccess=()=>{this.db=r.result;res(r.result)};r.onerror=()=>rej(r.error)}catch(e){rej(e)}})},
+  async tx(mode,fn){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('clips',mode),st=t.objectStore('clips'),q=fn(st);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})},
+  all(){return this.tx('readonly',s=>s.getAll())},put(o){return this.tx('readwrite',s=>s.put(o))},del(id){return this.tx('readwrite',s=>s.delete(id))}};
+let prURLs=[],prRecorder=null;
+function prDefaultLabel(){return `Week ${Math.floor(dayNo()/7)+1} · ${new Date().toLocaleDateString(undefined,{day:'numeric',month:'short'})}`}
+async function renderClips(){
+  if(!$('#prLabel').value)$('#prLabel').value=prDefaultLabel();
+  let clips;try{clips=(await IDB.all()).sort((a,b)=>b.ts-a.ts)}catch(e){$('#prList').innerHTML='<div class="small muted">This view can\'t save clips. Use the GitHub version of the portal for progress clips.</div>';return}
+  prURLs.forEach(u=>URL.revokeObjectURL(u));prURLs=[];
+  const url=b=>{const u=URL.createObjectURL(b);prURLs.push(u);return u};
+  const last=clips[0];const days=last?Math.floor((Date.now()-last.ts)/864e5):null;
+  $('#prMsg').innerHTML=!clips.length?'<span class="muted">No clips yet. Record your first one today: it\'s the most valuable one later!</span>':days>=7?`<span style="color:var(--warn)">Your last clip was ${days} days ago. Time for this week's recording!</span>`:`<span class="muted">${clips.length} clip${clips.length>1?'s':''} saved · last one ${days===0?'today':days+' day'+(days>1?'s':'')+' ago'}</span>`;
+  $('#prCompare').innerHTML=clips.length>=2?`<div class="verdict" style="margin-top:10px"><div class="vt" style="font-size:16px">Then vs now</div><div class="small muted">${esc(clips[clips.length-1].label)}</div><audio controls src="${url(clips[clips.length-1].blob)}" style="width:100%;height:36px"></audio><div class="small muted" style="margin-top:6px">${esc(clips[0].label)}</div><audio controls src="${url(clips[0].blob)}" style="width:100%;height:36px"></audio></div>`:'';
+  $('#prList').innerHTML=clips.map(c=>`<div class="clip"><div class="row between"><b>${esc(c.label)}</b><button class="btn sm" data-del="${c.id}" style="color:var(--bad)">Delete</button></div><div class="small muted">${new Date(c.ts).toLocaleString()}</div><audio controls preload="none" src="${url(c.blob)}"></audio></div>`).join('');
+  $$('#prList [data-del]').forEach(b=>b.onclick=async()=>{if(b.dataset.sure){await IDB.del(b.dataset.del);renderClips()}else{b.dataset.sure=1;b.textContent='Tap again to delete'}});
+}
+async function saveClip(blob){try{await IDB.put({id:'p'+Date.now(),ts:Date.now(),label:$('#prLabel').value.trim()||prDefaultLabel(),blob});$('#prLabel').value='';toast('Clip saved 📼');logPractice();quest('clip');renderClips()}catch(e){$('#prMsg').innerHTML='<span style="color:var(--bad)">Couldn\'t save the clip in this view. Use the GitHub version of the portal.</span>'}}
+$('#prFile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)saveClip(f)};
+$('#prRec').onclick=async()=>{
+  if(prRecorder){prRecorder.stop();return}
+  ac();const ok=await Mic.start();if(!ok||!Mic.stream||!window.MediaRecorder){$('#prMsg').innerHTML='<span style="color:var(--warn)">Live recording isn\'t available here. Use "🎙 Add a recording" to record with your phone instead.</span>';return}
+  const chunks=[];prRecorder=new MediaRecorder(Mic.stream);prRecorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  prRecorder.onstop=()=>{clearInterval(prRecorder._iv);const b=new Blob(chunks,{type:prRecorder.mimeType||'audio/webm'});prRecorder=null;$('#prRec').textContent='● Record now';$('#prRec').classList.remove('stop');saveClip(b)};
+  prRecorder.start();const t0=Date.now();$('#prRec').classList.add('stop');
+  prRecorder._iv=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('#prRec').textContent=`■ Stop (${s}s)`;if(s>=90&&prRecorder)prRecorder.stop()},250);
+};
+
 /* =================== AAJ KA RIYAAZ: daily home =================== */
 const LEVELS=[[0,'Shuruaat 🌱'],[100,'Strummer 🎸'],[300,'Chord Champ 🏅'],[600,'Riyaazi 🔥'],[1000,'Rockstar ⭐'],[1600,'Ustaad 👑']];
 const TIPS=[
@@ -1834,10 +1967,13 @@ function todaysPlan(){
    {k:'ear',i:'🎧',t:'Ear game: 5 right answers',d:'Guess the chord by sound (below)',go:()=>{const e=$('#earCard');e&&e.scrollIntoView({behavior:'smooth',block:'center'})}},
    {k:'song',i:'🎬',t:`Play along: ${song.t}`,d:'Finish one play-along at any tempo',go:()=>{location.hash='#songs';setTimeout(()=>openSong(song.id),50)}},
    {k:'strum',i:'🥁',t:'Strum pattern of the day',d:`Play the "${Object.values(PATTERNS)[d%Object.keys(PATTERNS).length].name}" pattern`,go:()=>{location.hash='#practice';setTimeout(()=>{sPat=Object.keys(PATTERNS)[d%Object.keys(PATTERNS).length];renderPatterns();$('#sPats').scrollIntoView({block:'center'})},50)}},
-   {k:'tune',i:'🎚️',t:'Tune up first',d:'Use the tuner (live or a recording)',go:()=>{location.hash='#tune'}}
+   {k:'tune',i:'🎚️',t:'Tune up first',d:'Use the tuner (live or a recording)',go:()=>{location.hash='#tune'}},
+   {k:'rhythm',i:'🎯',t:'Rhythm game: score 60%+',d:'Tap on the beat in the rhythm game',go:()=>{location.hash='#practice';setTimeout(()=>$('#rgCard').scrollIntoView({block:'center'}),80)}},
+   {k:'pick',i:'🤌',t:`Fingerpick: ${Object.values(PICKS)[d%Object.keys(PICKS).length].name}`,d:'Play along with the picking pattern',go:()=>{location.hash='#practice';setTimeout(()=>{fpPat=Object.keys(PICKS)[d%Object.keys(PICKS).length];renderPicks();$('#fpPats').scrollIntoView({block:'center'})},80)}}
   ];
-  const order=[0,1,2,3,4,5].sort((a,b)=>seeded(d*13+a)-seeded(d*13+b));
-  let pick=order.slice(0,3).map(i=>kinds[i]);if(d===0)pick=[kinds[5],kinds[0],kinds[2]];
+  if(d%7===6)kinds.push({k:'clip',i:'📼',t:'Weekly progress clip',d:'Record 30–60 s of a song in My progress clips',go:()=>{location.hash='#practice';setTimeout(()=>$('#prCard').scrollIntoView({block:'center'}),80)}});
+  const order=kinds.map((_,i)=>i).sort((a,b)=>seeded(d*13+a)-seeded(d*13+b));
+  let pick=order.slice(0,3).map(i=>kinds[i]);const wk=kinds.findIndex(k=>k.k==='clip');if(wk>=0&&!pick.some(p=>p.k==='clip'))pick[2]=kinds[wk];if(d===0)pick=[kinds[5],kinds[0],kinds[2]];
   return{d,pick,tip:TIPS[d%TIPS.length],fact:FACTS[d%FACTS.length],song,cA};
 }
 function questState(){const q=store.get('quests',{});if(q.day!==todayStr())return{day:todayStr(),done:{},bonus:false};return q}
@@ -1892,7 +2028,7 @@ function renderEarOpts(){
 }
 
 /* =================== init =================== */
-renderRoadmap();renderStreak();renderToday();renderTunerStrings();renderChordLib();renderCheckChips();setCheckTarget('C');renderPairUI();renderBeats();renderPatterns();renderSongList();route();
+renderRoadmap();renderStreak();renderToday();renderTunerStrings();renderChordLib();renderCheckChips();setCheckTarget('C');renderPairUI();renderBeats();renderPatterns();renderPicks();rgBestText();renderClips();renderSongList();route();
 </script>
 </body>
 </html>
